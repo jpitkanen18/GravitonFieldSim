@@ -3,3 +3,4 @@ output/
 *.out
 main
 external/
+glad.c
