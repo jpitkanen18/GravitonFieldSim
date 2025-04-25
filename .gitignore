@@ -1,0 +1,5 @@
+*.dSYM/
+output/
+*.out
+main
+external/
