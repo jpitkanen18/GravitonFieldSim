@@ -14,10 +14,10 @@ struct TrailPoint {
     glm::vec3 color;
 };
 
-const unsigned int SCR_WIDTH = 800;
-const unsigned int SCR_HEIGHT = 600;
-const int GRID_SIZE = 64;
-const float GRAVITON_SPACING = 1.0f;
+const unsigned int SCR_WIDTH = 1280;
+const unsigned int SCR_HEIGHT = 720;
+const int GRID_SIZE = 128;
+const float GRAVITON_SPACING = 0.5f;
 
 struct Graviton {
     glm::vec3 position;
@@ -57,6 +57,7 @@ float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
 bool paused = true;
+bool mouseEnabled = true;
 
 void processInput(GLFWwindow* window) {
     float cameraSpeed = 10.0f * deltaTime;
@@ -73,9 +74,17 @@ void processInput(GLFWwindow* window) {
     bool spacePressedNow = glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS;
     if (spacePressedNow && !spacePressedLastFrame) paused = !paused;
     spacePressedLastFrame = spacePressedNow;
+
+    static bool bPressedLastFrame = false;
+    bool bPressedNow = glfwGetKey(window, GLFW_KEY_B) == GLFW_PRESS;
+    if (bPressedNow && !bPressedLastFrame) mouseEnabled = !mouseEnabled;
+    bPressedLastFrame = bPressedNow;
 }
 
 void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
+    if(!mouseEnabled) {
+        return;
+    }
     if (firstMouse) {
         lastX = float(xpos);
         lastY = float(ypos);
@@ -89,7 +98,7 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
 
     float sensitivity = 0.1f;
     #ifdef __linux__
-        sensitivity = 0.001f; 
+        sensitivity = 0.007f; 
     #endif
     xoffset *= sensitivity;
     yoffset *= sensitivity;
@@ -353,18 +362,22 @@ void setupBuffers() {
 void renderField(const glm::mat4& vp) {
     // Prepare line data: for each graviton with momentum, two vertices (start/end) with color
     std::vector<float> lineData;
+    #pragma omp parallel for
     for (const auto& g : field) {
         glm::vec3 p1 = g.position * GRAVITON_SPACING;
         if (glm::length(g.momentum) > 0.01f) {
-            float intensity = glm::clamp(glm::length(g.momentum) * 10.0f, 0.0f, 1.0f) * 0.01f;
+            float intensity = glm::length(g.momentum) * 0.1f;
             glm::vec3 color = glm::mix(glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(1.0f, 0.0f, 0.0f), intensity);
             glm::vec3 p2 = p1 + glm::normalize(g.momentum) * 0.5f;
 
-            lineData.push_back(p1.x); lineData.push_back(p1.y); lineData.push_back(p1.z);
-            lineData.push_back(color.r); lineData.push_back(color.g); lineData.push_back(color.b);
+            #pragma omp critical
+            {
+                lineData.push_back(p1.x); lineData.push_back(p1.y); lineData.push_back(p1.z);
+                lineData.push_back(color.r); lineData.push_back(color.g); lineData.push_back(color.b);
 
-            lineData.push_back(p2.x); lineData.push_back(p2.y); lineData.push_back(p2.z);
-            lineData.push_back(color.r); lineData.push_back(color.g); lineData.push_back(color.b);
+                lineData.push_back(p2.x); lineData.push_back(p2.y); lineData.push_back(p2.z);
+                lineData.push_back(color.r); lineData.push_back(color.g); lineData.push_back(color.b);
+            }
         }
     }
     glBindVertexArray(fieldVAO);
@@ -382,10 +395,10 @@ void renderMasses(const glm::mat4& vp) {
     for (const auto& m : masses) {
         glm::vec3 pos = m.position * GRAVITON_SPACING;
         glm::vec3 color = m.color;
-        float radius = std::cbrt(m.mass) * 0.001f;
+        float radius = std::cbrt(m.mass);
         massData.push_back(pos.x); massData.push_back(pos.y); massData.push_back(pos.z);
         massData.push_back(color.r); massData.push_back(color.g); massData.push_back(color.b);
-        glPointSize(radius * 100.0f);
+        glPointSize(radius);
     }
     glBindVertexArray(massVAO);
     glBindBuffer(GL_ARRAY_BUFFER, massVBO);
