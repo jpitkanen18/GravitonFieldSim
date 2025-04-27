@@ -1,5 +1,5 @@
 {
-	"C_Cpp.default.compilerPath": "/usr/bin/clang++",
+	"C_Cpp.default.compilerPath": "/usr/bin/g++",
 	"files.associations": {
 		"*.page-template": "vue",
 		"*.layout-template": "vue",

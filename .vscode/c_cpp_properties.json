@@ -13,6 +13,16 @@
             ],
             "cStandard": "c17",
             "cppStandard": "c++17"
+        },
+        {
+            "name": "Linux",
+            "includePath": [
+                "${default}"
+            ],
+            "defines": [],
+            "cStandard": "c17",
+            "cppStandard": "c++17",
+            "compilerPath": "/usr/bin/g++"
         }
     ],
     "version": 4

@@ -4,3 +4,4 @@ output/
 main
 external/
 glad.c
+.history

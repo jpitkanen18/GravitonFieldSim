@@ -88,6 +88,9 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
     lastY = float(ypos);
 
     float sensitivity = 0.1f;
+    #ifdef __linux__
+        sensitivity = 0.001f; 
+    #endif
     xoffset *= sensitivity;
     yoffset *= sensitivity;
 
