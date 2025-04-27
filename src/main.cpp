@@ -9,6 +9,8 @@
 #include <iostream>
 #include <cmath>
 
+#include "include/util.h"
+
 struct TrailPoint {
     glm::vec3 position;
     glm::vec3 color;
@@ -17,7 +19,7 @@ struct TrailPoint {
 const unsigned int SCR_WIDTH = 1280;
 const unsigned int SCR_HEIGHT = 720;
 const int GRID_SIZE = 128;
-const float GRAVITON_SPACING = 0.5f;
+const float GRAVITON_SPACING = 0.66f;
 
 struct Graviton {
     glm::vec3 position;
@@ -279,29 +281,8 @@ void updateMasses() {
 
 GLuint fieldVAO = 0, fieldVBO = 0;
 GLuint massVAO = 0, massVBO = 0;
-GLuint shaderProgram = 0;
-
-const char* vertexShaderSource = R"(
-#version 410 core
-layout (location = 0) in vec3 aPos;
-layout (location = 1) in vec3 aColor;
-uniform mat4 uVP;
-out vec3 vColor;
-void main() {
-    gl_Position = uVP * vec4(aPos, 1.0);
-    vColor = aColor;
-    gl_PointSize = 10.0;
-}
-)";
-
-const char* fragmentShaderSource = R"(
-#version 410 core
-in vec3 vColor;
-out vec4 FragColor;
-void main() {
-    FragColor = vec4(vColor, 1.0);
-}
-)";
+GLuint gravitonShaderProgram = 0;
+GLuint massShaderProgram = 0;
 
 GLuint compileShader(GLenum type, const char* src) {
     GLuint shader = glCreateShader(type);
@@ -317,22 +298,27 @@ GLuint compileShader(GLenum type, const char* src) {
     return shader;
 }
 
-void setupShaders() {
-    GLuint vs = compileShader(GL_VERTEX_SHADER, vertexShaderSource);
-    GLuint fs = compileShader(GL_FRAGMENT_SHADER, fragmentShaderSource);
-    shaderProgram = glCreateProgram();
-    glAttachShader(shaderProgram, vs);
-    glAttachShader(shaderProgram, fs);
-    glLinkProgram(shaderProgram);
+void setupShader(std::string vsPath, std::string fsPath, GLuint *program) {
+    GLuint vs = compileShader(GL_VERTEX_SHADER, loadFile(vsPath).c_str());
+    GLuint fs = compileShader(GL_FRAGMENT_SHADER, loadFile(fsPath).c_str());
+    *program = glCreateProgram();
+    glAttachShader(*program, vs);
+    glAttachShader(*program, fs);
+    glLinkProgram(*program);
     GLint success;
-    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+    glGetProgramiv(*program, GL_LINK_STATUS, &success);
     if (!success) {
         char info[512];
-        glGetProgramInfoLog(shaderProgram, 512, nullptr, info);
+        glGetProgramInfoLog(*program, 512, nullptr, info);
         std::cerr << "Shader linking failed: " << info << std::endl;
     }
     glDeleteShader(vs);
     glDeleteShader(fs);
+}
+
+void setupShaders() {
+    setupShader("shaders/graviton.vs", "shaders/graviton.fs", &gravitonShaderProgram);
+    setupShader("shaders/mass.vs", "shaders/mass.fs", &massShaderProgram);
 }
 
 void setupBuffers() {
@@ -342,9 +328,9 @@ void setupBuffers() {
     glBindBuffer(GL_ARRAY_BUFFER, fieldVBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 6 * 2 * field.size(), nullptr, GL_DYNAMIC_DRAW); // conservative size
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 7 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 7 * sizeof(float), (void*)(3 * sizeof(float)));
     glBindVertexArray(0);
 
     glGenVertexArrays(1, &massVAO);
@@ -360,33 +346,73 @@ void setupBuffers() {
 }
 
 void renderField(const glm::mat4& vp) {
-    // Prepare line data: for each graviton with momentum, two vertices (start/end) with color
-    std::vector<float> lineData;
-    #pragma omp parallel for
-    for (const auto& g : field) {
-        glm::vec3 p1 = g.position * GRAVITON_SPACING;
-        if (glm::length(g.momentum) > 0.01f) {
-            float intensity = glm::length(g.momentum) * 0.1f;
-            glm::vec3 color = glm::mix(glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(1.0f, 0.0f, 0.0f), intensity);
-            glm::vec3 p2 = p1 + glm::normalize(g.momentum) * 0.5f;
+    // Create thread-local line data containers
+    std::vector<std::vector<float>> threadLocalData;
+    #pragma omp parallel
+    {
+        std::vector<float> localLineData;
+        #pragma omp for nowait
+        for (const auto& g : field) {
+            glm::vec3 p1 = g.position * GRAVITON_SPACING;
+            if (glm::length(g.momentum) > 0.01f) {
+                float intensity = glm::length(g.momentum) * 0.1f;
+                
+                // Map base color rgb components
+                glm::vec3 baseColor = glm::mix(glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(1.0f, 0.0f, 0.0f), intensity);
+                
+                // Map intensity to alpha between 0.2f and 0.6f
+                //float alpha = 0.2f + intensity * 0.05f; // This maps from 0.2 to 0.6 as intensity goes from 0 to 1
+                float alpha = 0.2f;
+                
+                glm::vec3 p2 = p1 + glm::normalize(g.momentum) * 0.5f;
 
-            #pragma omp critical
-            {
-                lineData.push_back(p1.x); lineData.push_back(p1.y); lineData.push_back(p1.z);
-                lineData.push_back(color.r); lineData.push_back(color.g); lineData.push_back(color.b);
+                // Add to local thread data including rgba (now with alpha)
+                localLineData.push_back(p1.x); localLineData.push_back(p1.y); localLineData.push_back(p1.z);
+                localLineData.push_back(baseColor.r); localLineData.push_back(baseColor.g); 
+                localLineData.push_back(baseColor.b); localLineData.push_back(alpha);
 
-                lineData.push_back(p2.x); lineData.push_back(p2.y); lineData.push_back(p2.z);
-                lineData.push_back(color.r); lineData.push_back(color.g); lineData.push_back(color.b);
+                localLineData.push_back(p2.x); localLineData.push_back(p2.y); localLineData.push_back(p2.z);
+                localLineData.push_back(baseColor.r); localLineData.push_back(baseColor.g); 
+                localLineData.push_back(baseColor.b); localLineData.push_back(alpha);
             }
         }
+        
+        // Collect local data at the end
+        #pragma omp critical
+        {
+            threadLocalData.push_back(std::move(localLineData));
+        }
     }
+    
+    // Determine total size and merge thread-local data efficiently
+    size_t totalSize = 0;
+    for (const auto& threadData : threadLocalData) {
+        totalSize += threadData.size();
+    }
+    
+    std::vector<float> lineData;
+    lineData.reserve(totalSize);
+    for (const auto& threadData : threadLocalData) {
+        lineData.insert(lineData.end(), threadData.begin(), threadData.end());
+    }
+
+    // Send merged data to GPU
     glBindVertexArray(fieldVAO);
     glBindBuffer(GL_ARRAY_BUFFER, fieldVBO);
     glBufferData(GL_ARRAY_BUFFER, lineData.size() * sizeof(float), lineData.data(), GL_DYNAMIC_DRAW);
-    glUseProgram(shaderProgram);
-    GLint vpLoc = glGetUniformLocation(shaderProgram, "uVP");
+    
+    // Enable alpha blending if needed
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    
+    glUseProgram(gravitonShaderProgram);
+    GLint vpLoc = glGetUniformLocation(gravitonShaderProgram, "uVP");
     glUniformMatrix4fv(vpLoc, 1, GL_FALSE, glm::value_ptr(vp));
-    glDrawArrays(GL_LINES, 0, (GLsizei)(lineData.size() / 6));
+    
+    // Each vertex now has 7 components (3 position + 4 color)
+    glDrawArrays(GL_LINES, 0, (GLsizei)(lineData.size() / 7));
+    
+    glDisable(GL_BLEND);
     glBindVertexArray(0);
 }
 
@@ -403,8 +429,8 @@ void renderMasses(const glm::mat4& vp) {
     glBindVertexArray(massVAO);
     glBindBuffer(GL_ARRAY_BUFFER, massVBO);
     glBufferData(GL_ARRAY_BUFFER, massData.size() * sizeof(float), massData.data(), GL_DYNAMIC_DRAW);
-    glUseProgram(shaderProgram);
-    GLint vpLoc = glGetUniformLocation(shaderProgram, "uVP");
+    glUseProgram(massShaderProgram);
+    GLint vpLoc = glGetUniformLocation(massShaderProgram, "uVP");
     glUniformMatrix4fv(vpLoc, 1, GL_FALSE, glm::value_ptr(vp));
     glDrawArrays(GL_POINTS, 0, (GLsizei)(massData.size() / 6));
     glBindVertexArray(0);
@@ -433,8 +459,8 @@ void renderTrails(const glm::mat4& vp) {
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
 
-    glUseProgram(shaderProgram);
-    GLint vpLoc = glGetUniformLocation(shaderProgram, "uVP");
+    glUseProgram(massShaderProgram);
+    GLint vpLoc = glGetUniformLocation(massShaderProgram, "uVP");
     glUniformMatrix4fv(vpLoc, 1, GL_FALSE, glm::value_ptr(vp));
     int offset = 0;
     for (const auto& trail : massTrails) {
