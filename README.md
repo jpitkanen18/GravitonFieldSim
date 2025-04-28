@@ -5,7 +5,7 @@
 
 This is a physics simulator designed to test the plausibility of a graviton-based field substrate as the origin of spacetime curvature. Instead of Newtonian brute-force equations, this model propagates stress through a field of discrete graviton units using directional vector fields and inverse-distance falloff. Bodies don’t attract each other directly—they push the field, and the field pushes back.
 
-![](preview/gravitonsim.mov)
+![](preview/gravitonsim.gif)
 
 ### Concept
 - The universe is computable.
