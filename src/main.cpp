@@ -18,8 +18,8 @@ struct TrailPoint {
 
 const unsigned int SCR_WIDTH = 1280;
 const unsigned int SCR_HEIGHT = 720;
-const int GRID_SIZE = 128;
-const float GRAVITON_SPACING = 0.66f;
+const int GRID_SIZE = 64;
+const float GRAVITON_SPACING = 1.0f;
 
 struct Graviton {
     glm::vec3 position;
@@ -256,14 +256,14 @@ void updateMasses() {
             float dist = glm::length(dir);
             if (dist < 0.0001f) continue;
 
-            glm::vec3 force = dir / (glm::length(g.momentum) / (dist * dist));
+            glm::vec3 force = dir / (glm::length(g.momentum) / (dist * dist)) * 6.674e-15f;
             totalForce += force;
         }
         // Update velocity and position of mass
         glm::vec3 acceleration = totalForce / m.mass;
         // m.velocity += acceleration * deltaTime * 0.000001f;
         // m.position += m.velocity * deltaTime;
-        m.velocity += acceleration * 1.0f * 0.000000000000001f;
+        m.velocity += acceleration * 1.0f;
         m.position += m.velocity * 1.0f;
     }
 
@@ -360,17 +360,24 @@ void renderField(const glm::mat4& vp) {
                 // Map base color rgb components
                 glm::vec3 baseColor = glm::mix(glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(1.0f, 0.0f, 0.0f), intensity);
                 
-                // Map intensity to alpha between 0.2f and 0.6f
-                //float alpha = 0.2f + intensity * 0.05f; // This maps from 0.2 to 0.6 as intensity goes from 0 to 1
-                float alpha = 0.2f;
+                glm::vec3 toMass = glm::normalize(masses[0].position * GRAVITON_SPACING - p1);
+                glm::vec3 momentumDir = glm::normalize(g.momentum);
+
+                // 1.0f if perfectly aligned, 0.0f if perpendicular, -1.0f if opposite
+                float alignment = glm::dot(momentumDir, toMass);
+
+                // Map alignment (which is between -1 and 1) into a 0 to 1 deviation measure
+                float deviation = 1.0f - alignment;
+
+                // Now map deviation [0, 1] to alpha [0.2, 1.0]
+                float alpha = 0.1f + deviation * 0.9f;
                 
                 glm::vec3 p2 = p1 + glm::normalize(g.momentum) * 0.5f;
-
-                // Add to local thread data including rgba (now with alpha)
+                
                 localLineData.push_back(p1.x); localLineData.push_back(p1.y); localLineData.push_back(p1.z);
                 localLineData.push_back(baseColor.r); localLineData.push_back(baseColor.g); 
                 localLineData.push_back(baseColor.b); localLineData.push_back(alpha);
-
+                
                 localLineData.push_back(p2.x); localLineData.push_back(p2.y); localLineData.push_back(p2.z);
                 localLineData.push_back(baseColor.r); localLineData.push_back(baseColor.g); 
                 localLineData.push_back(baseColor.b); localLineData.push_back(alpha);
@@ -400,8 +407,7 @@ void renderField(const glm::mat4& vp) {
     glBindVertexArray(fieldVAO);
     glBindBuffer(GL_ARRAY_BUFFER, fieldVBO);
     glBufferData(GL_ARRAY_BUFFER, lineData.size() * sizeof(float), lineData.data(), GL_DYNAMIC_DRAW);
-    
-    // Enable alpha blending if needed
+
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     
@@ -409,7 +415,7 @@ void renderField(const glm::mat4& vp) {
     GLint vpLoc = glGetUniformLocation(gravitonShaderProgram, "uVP");
     glUniformMatrix4fv(vpLoc, 1, GL_FALSE, glm::value_ptr(vp));
     
-    // Each vertex now has 7 components (3 position + 4 color)
+    // 7 components (3 position + 4 color)
     glDrawArrays(GL_LINES, 0, (GLsizei)(lineData.size() / 7));
     
     glDisable(GL_BLEND);

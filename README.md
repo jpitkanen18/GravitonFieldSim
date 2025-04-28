@@ -5,13 +5,19 @@
 
 This is a physics simulator designed to test the plausibility of a graviton-based field substrate as the origin of spacetime curvature. Instead of Newtonian brute-force equations, this model propagates stress through a field of discrete graviton units using directional vector fields and inverse-distance falloff. Bodies don’t attract each other directly—they push the field, and the field pushes back.
 
-![image](images/gravitonsim.png)
+![](preview/gravitonsim.mov)
 
 ### Concept
 - The universe is computable.
 - Spacetime isn’t a fabric—it’s a medium.
 - Mass applies directional stress to that medium (the graviton field), and the field carries and redistributes momentum over time.
-- This simulation explores whether a system like that can lead to emergent gravitational orbits.
+- This simulation explores whether a system like that can lead to emergent gravitational orbits (it does).
+
+## Why?
+
+I have a fundamental problem with entropy and I eventually want to prove that the universe is computable.
+The goal isn’t just to simulate gravity, but to simulate it through something—to prove that spacetime curvature can emerge from mass interacting with a quantised substrate.
+
 
 ### Key Features
 - Gravitons are arranged in a 3D grid. Each has position, momentum, and accumulated force.
@@ -20,11 +26,6 @@ This is a physics simulator designed to test the plausibility of a graviton-base
 - Masses react to local field stress instead of directly calculating attraction to each other.
 - Trail rendering for orbit paths.
 - Camera controls, pause/play toggle (SPACE).
-
-## Why?
-
-I have a fundamental problem with entropy and I eventually want to prove that the universe is computable.
-The goal isn’t just to simulate gravity, but to simulate it through something—to prove that spacetime curvature can emerge from mass interacting with a quantised substrate.
 
 ### Dependencies
 - GLFW
@@ -48,7 +49,18 @@ B.
 g++ src/main.cpp -std=c++17 -lglfw -ldl -lGL -fopenmp -o GravitonFieldSim
 ```
 
-## Notes
+## Previews
+![image](preview/sim.png)
+> Overall picture of the sim
+
+![image](preview/curvature.png)
+> Visualisation highlighting the curvature caused by the sun's influence on the field
+
+![image](preview/jupiter.png)
+> Visualisation highlighting jupiter's influence on the field
+
+
+### Notes
 - The simulation isn’t tuned for realism—it’s tuned to show that a field-based gravitational substrate can form emergent orbits.
 - Performance will scale poorly without GPU compute. This is a CPU-based testbed only for now.
 
