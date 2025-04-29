@@ -233,7 +233,7 @@ void updateField() {
             float dist = glm::length(dir);
             if (dist < 0.0001f) continue;
 
-            glm::vec3 influence = dir * (m.mass / (dist * dist * dist));
+            glm::vec3 influence = glm::normalize(dir) * m.mass / (dist * dist);
             g.accumulatedForce += influence;
         }
     }
@@ -256,14 +256,14 @@ void updateMasses() {
             float dist = glm::length(dir);
             if (dist < 0.0001f) continue;
 
-            glm::vec3 force = dir / (glm::length(g.momentum) / (dist * dist)) * 6.674e-15f;
+            glm::vec3 force = dir / (glm::length(g.momentum) / (dist * dist));
             totalForce += force;
         }
         // Update velocity and position of mass
         glm::vec3 acceleration = totalForce / m.mass;
         // m.velocity += acceleration * deltaTime * 0.000001f;
         // m.position += m.velocity * deltaTime;
-        m.velocity += acceleration * 1.0f;
+        m.velocity += acceleration * 1.0f * 6.674e-15f;
         m.position += m.velocity * 1.0f;
     }
 
