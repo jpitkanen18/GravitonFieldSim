@@ -18,8 +18,8 @@ struct TrailPoint {
 
 const unsigned int SCR_WIDTH = 1280;
 const unsigned int SCR_HEIGHT = 720;
-const int GRID_SIZE = 64;
-const float GRAVITON_SPACING = 1.0f;
+const int GRID_SIZE = 128;
+const float GRAVITON_SPACING = 0.66f;
 
 struct Graviton {
     glm::vec3 position;
@@ -176,10 +176,21 @@ void initMasses() {
     }
 
     // Jupiter 
+    // {
+    //     glm::vec3 pos = fieldCenter + glm::vec3(scale * 5.2f, 0, 0);
+    //     glm::vec3 vel = glm::normalize(glm::cross(glm::vec3(0,1,0), glm::normalize(pos - fieldCenter))) * velScale * 0.44f;
+    //     masses.push_back({ pos, vel, 0.954f, glm::vec3(1.0f, 0.9f, 0.6f) });
+    // }
     {
-        glm::vec3 pos = fieldCenter + glm::vec3(scale * 5.2f, 0, 0);
+        glm::vec3 pos = fieldCenter + glm::vec3(scale * 5.2f, 0, 0.5);
         glm::vec3 vel = glm::normalize(glm::cross(glm::vec3(0,1,0), glm::normalize(pos - fieldCenter))) * velScale * 0.44f;
-        masses.push_back({ pos, vel, 0.954f, glm::vec3(1.0f, 0.9f, 0.6f) });
+        masses.push_back({ pos, vel, 10.954f, glm::vec3(1.0f, 0.9f, 0.6f) });
+    }
+    // Titan
+    {
+        glm::vec3 pos = fieldCenter + glm::vec3(scale * 5.5f, 0, 0);
+        glm::vec3 vel = glm::normalize(glm::cross(glm::vec3(0,1,0), glm::normalize(pos - fieldCenter))) * velScale * 0.9f;
+        masses.push_back({ pos, vel, 0.0000954f, glm::vec3(1.0f, 0.9f, 0.6f) });
     }
 
     // These require a larger field which in turn requires better parallelization
@@ -229,11 +240,11 @@ void updateField() {
     for (const auto& m : masses) {
         #pragma omp parallel for
         for (auto& g : field) {
-            glm::vec3 dir = g.position - m.position;
+            glm::vec3 dir = m.position - g.position;
             float dist = glm::length(dir);
             if (dist < 0.0001f) continue;
 
-            glm::vec3 influence = glm::normalize(dir) * m.mass / (dist * dist);
+            glm::vec3 influence = glm::normalize(dir) * (m.mass) / (dist * dist);
             g.accumulatedForce += influence;
         }
     }
@@ -246,27 +257,30 @@ void updateField() {
 }
 
 void updateMasses() {
-    // For each mass, accumulate forces from nearby gravitons
+    const float maxSampleRadius = 1.0f * GRAVITON_SPACING;
+
     #pragma omp parallel for
     for (auto& m : masses) {
         glm::vec3 totalForce(0.0f);
-        #pragma omp parallel for
-        for (const auto& g : field) {
-            glm::vec3 dir = g.position - m.position;
-            float dist = glm::length(dir);
-            if (dist < 0.0001f) continue;
 
-            glm::vec3 force = dir / (glm::length(g.momentum) / (dist * dist));
+        #pragma omp parallel for reduction(+:totalForce)
+        for (int i = 0; i < field.size(); ++i) {
+            const auto& g = field[i];
+            glm::vec3 offset = g.position - m.position;
+            float dist = glm::length(offset);
+            if (dist > maxSampleRadius || dist < 0.0001f) continue;
+
+            // Apply inverse-square falloff (more physical than 1/r)
+            glm::vec3 force = g.momentum / (dist * dist + 1e-6f);
             totalForce += force;
         }
-        // Update velocity and position of mass
-        glm::vec3 acceleration = totalForce / m.mass;
-        // m.velocity += acceleration * deltaTime * 0.000001f;
-        // m.position += m.velocity * deltaTime;
-        m.velocity += acceleration * 1.0f * 6.674e-15f;
-        m.position += m.velocity * 1.0f;
+
+        glm::vec3 acceleration = totalForce / m.mass;   // m/s²
+        m.velocity += acceleration * 1e-11f;              // m/s, since timestep = 1
+        m.position += m.velocity;                       // m
     }
 
+    // Mass trail rendering remains the same
     #pragma omp parallel for
     for (size_t i = 0; i < masses.size(); ++i) {
         TrailPoint tp;
@@ -511,6 +525,10 @@ int main() {
 
     setupShaders();
     setupBuffers();
+
+    updateField();
+    updateMasses();
+    
 
     while (!glfwWindowShouldClose(window)) {
         float currentFrame = float(glfwGetTime());
