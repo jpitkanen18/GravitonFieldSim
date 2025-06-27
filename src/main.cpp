@@ -8,6 +8,9 @@
 #include <vector>
 #include <iostream>
 #include <cmath>
+#ifdef WIN32
+#define DllExport __declspec(dllexport)
+#endif
 
 #include "include/util.h"
 

@@ -1,0 +1,23 @@
+CC=C:/msys64/clang64/bin/clang
+_PWD=$(shell pwd)
+PWD=$(shell cygpath -aw $(_PWD))
+INCDIRS=-I$(PWD)/external -I$(PWD)/src/include
+LDIRS=-L$(PWD)/external/lib 
+
+LIBS=-lstdc++ -lglfw3dll -fopenmp=libomp -lpthread
+
+CFLAGS=$(INCDIRS) $(LDIRS) $(LIBS) -Wall -O1
+
+SDK=$(CC) $(CFLAGS)
+
+all: main.o glad.o 
+	$(SDK) main.o glad.o -o sim.exe
+
+main.o:
+	$(SDK) -c src/main.cpp -o main.o
+
+glad.o:
+	$(SDK) -c src/glad.c -o glad.o
+
+clean:
+	rm *.o sim.exe

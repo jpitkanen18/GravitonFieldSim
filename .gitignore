@@ -5,3 +5,7 @@ main
 external/
 glad.c
 .history
+*.exe
+*.dll
+*.o
+OpenCL/
