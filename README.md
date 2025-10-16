@@ -46,7 +46,8 @@ A. Run from VSCode, should work on macOS at least if dependencies are installed
 
 B. 
 ```shell
-g++ src/main.cpp -std=c++17 -lglfw -ldl -lGL -fopenmp -o GravitonFieldSim
+g++ src/main.cpp -std=c++17 -lglfw -ldl -lGL -fopenmp -o sim
+./sim
 ```
 
 ## Previews

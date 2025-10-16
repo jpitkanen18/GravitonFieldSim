@@ -22,7 +22,7 @@ struct TrailPoint {
 const unsigned int SCR_WIDTH = 1280;
 const unsigned int SCR_HEIGHT = 720;
 const int GRID_SIZE = 128;
-const float GRAVITON_SPACING = 0.66f;
+const float GRAVITON_SPACING = 0.5f;
 
 struct Graviton {
     glm::vec3 position;
@@ -334,8 +334,8 @@ void setupShader(std::string vsPath, std::string fsPath, GLuint *program) {
 }
 
 void setupShaders() {
-    setupShader("shaders/graviton.vs", "shaders/graviton.fs", &gravitonShaderProgram);
-    setupShader("shaders/mass.vs", "shaders/mass.fs", &massShaderProgram);
+    setupShader("src/shaders/graviton.vs", "src/shaders/graviton.fs", &gravitonShaderProgram);
+    setupShader("src/shaders/mass.vs", "src/shaders/mass.fs", &massShaderProgram);
 }
 
 void setupBuffers() {

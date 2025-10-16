@@ -9,3 +9,4 @@ glad.c
 *.dll
 *.o
 OpenCL/
+sim
