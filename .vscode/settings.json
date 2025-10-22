@@ -80,6 +80,14 @@
 		"chrono": "cpp",
 		"thread": "cpp",
 		"cinttypes": "cpp",
-		"regex": "cpp"
+		"regex": "cpp",
+		"codecvt": "cpp",
+		"complex": "cpp",
+		"deque": "cpp",
+		"fstream": "cpp",
+		"semaphore": "cpp",
+		"numeric": "cpp",
+		"ranges": "cpp",
+		"stop_token": "cpp"
 	}
 }

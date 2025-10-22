@@ -1,0 +1,19 @@
+LDFLAGS=-L/opt/homebrew/opt/libomp/lib -L/opt/homebrew/lib/ 
+INCLUDE=-I/opt/homebrew/opt/libomp/include -I/opt/homebrew/include/ -Iexternal/ 
+CPPFLAGS=-std=c++17 -lglfw -ldl -fopenmp -framework OpenGL -O3
+
+CC=/opt/homebrew/opt/llvm/bin/clang++
+
+SDK=$(CC) $(LDFLAGS) $(INCLUDE) $(CPPFLAGS)
+
+all: sim.o glad.o
+	$(SDK) sim.o glad.o -o sim
+
+sim.o: src/main.cpp
+	$(SDK) -c src/main.cpp -o sim.o
+
+glad.o: src/glad.c
+	$(SDK) -c src/glad.c -o glad.o
+
+clean:
+	rm sim.o glad.o sim

@@ -15,26 +15,27 @@
 #include "include/util.h"
 
 struct TrailPoint {
-    glm::vec3 position;
-    glm::vec3 color;
+    glm::dvec3 position;
+    glm::dvec3 color;
 };
 
 const unsigned int SCR_WIDTH = 1280;
 const unsigned int SCR_HEIGHT = 720;
 const int GRID_SIZE = 128;
-const float GRAVITON_SPACING = 0.5f;
+const double GRAVITON_SPACING = 0.5f;
 
 struct Graviton {
-    glm::vec3 position;
-    glm::vec3 momentum;
-    glm::vec3 accumulatedForce;
+    glm::dvec3 position;
+    glm::dvec3 momentum;
+    glm::dvec3 accumulatedForce;
 };
 
 struct MassBody {
-    glm::vec3 position;
-    glm::vec3 velocity;
-    float mass;
-    glm::vec3 color;
+    glm::dvec3 position;
+    glm::dvec3 velocity;
+    double mass;
+    glm::dvec3 color;
+    std::string name;
 };
 
 std::vector<Graviton> field;
@@ -47,25 +48,25 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 }
 
 // Camera state
-glm::vec3 fieldCenter = glm::vec3(GRID_SIZE / 2.0f) * GRAVITON_SPACING;
-glm::vec3 cameraPos = fieldCenter + glm::vec3(20.0f, 20.0f, 20.0f);
-glm::vec3 cameraFront = glm::normalize(fieldCenter - cameraPos);
-glm::vec3 cameraUp(0.0f, 1.0f, 0.0f);
+glm::dvec3 fieldCenter = glm::dvec3(GRID_SIZE / 2.0f) * GRAVITON_SPACING;
+glm::dvec3 cameraPos = fieldCenter + glm::dvec3(20.0f, 20.0f, 20.0f);
+glm::dvec3 cameraFront = glm::normalize(fieldCenter - cameraPos);
+glm::dvec3 cameraUp(0.0f, 1.0f, 0.0f);
 
-float lastX = SCR_WIDTH / 2.0f;
-float lastY = SCR_HEIGHT / 2.0f;
-float yaw = -135.0f;
-float pitch = -35.0f;
+double lastX = SCR_WIDTH / 2.0f;
+double lastY = SCR_HEIGHT / 2.0f;
+double yaw = -135.0f;
+double pitch = -35.0f;
 bool firstMouse = true;
 
-float deltaTime = 0.0f;
-float lastFrame = 0.0f;
+double deltaTime = 0.0f;
+double lastFrame = 0.0f;
 
 bool paused = true;
 bool mouseEnabled = true;
 
 void processInput(GLFWwindow* window) {
-    float cameraSpeed = 10.0f * deltaTime;
+    double cameraSpeed = 10.0f * deltaTime;
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
         cameraPos += cameraSpeed * cameraFront;
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
@@ -91,17 +92,17 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
         return;
     }
     if (firstMouse) {
-        lastX = float(xpos);
-        lastY = float(ypos);
+        lastX = double(xpos);
+        lastY = double(ypos);
         firstMouse = false;
     }
 
-    float xoffset = float(xpos) - lastX;
-    float yoffset = lastY - float(ypos);
-    lastX = float(xpos);
-    lastY = float(ypos);
+    double xoffset = double(xpos) - lastX;
+    double yoffset = lastY - double(ypos);
+    lastX = double(xpos);
+    lastY = double(ypos);
 
-    float sensitivity = 0.1f;
+    double sensitivity = 0.1f;
     #ifdef __linux__
         sensitivity = 0.007f; 
     #endif
@@ -116,7 +117,7 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
     if(pitch < -89.0f)
         pitch = -89.0f;
 
-    glm::vec3 front;
+    glm::dvec3 front;
     front.x = cos(glm::radians(pitch)) * cos(glm::radians(yaw));
     front.y = sin(glm::radians(pitch));
     front.z = cos(glm::radians(pitch)) * sin(glm::radians(yaw));
@@ -128,11 +129,11 @@ void initField() {
     for (int x = 0; x < GRID_SIZE; ++x) {
         for (int y = 0; y < GRID_SIZE; ++y) {
             for (int z = 0; z < GRID_SIZE; ++z) {
-                glm::vec3 pos = glm::vec3(x, y, z) * GRAVITON_SPACING;
+                glm::dvec3 pos = glm::dvec3(x, y, z) * GRAVITON_SPACING;
                 field.push_back({
                     .position = pos,
-                    .momentum = glm::vec3(0.0f),
-                    .accumulatedForce = glm::vec3(0.0f)
+                    .momentum = glm::dvec3(0.0f),
+                    .accumulatedForce = glm::dvec3(0.0f)
                 });
             }
         }
@@ -141,88 +142,88 @@ void initField() {
 
 void initMasses() {
     masses.clear();
-    float scale = 5.0f;
-    float velScale = 0.05f;
+    double scale = 5.0f;
+    double velScale = 0.1f;
 
     // Sun 
     {
-        glm::vec3 pos = fieldCenter;
-        masses.push_back({ pos, glm::vec3(0), 1000.0f, glm::vec3(1.0f, 1.0f, 0.0f) });
+        glm::dvec3 pos = fieldCenter;
+        masses.push_back({ pos, glm::dvec3(0), 1000.0f, glm::dvec3(1.0f, 1.0f, 0.0f), "Sun"});
     }
 
     // Mercury 
     {
-        glm::vec3 pos = fieldCenter + glm::vec3(scale * 0.39f, 0, 0);
-        glm::vec3 vel = glm::normalize(glm::cross(glm::vec3(0,1,0), glm::normalize(pos - fieldCenter))) * velScale * 1.6f;
-        masses.push_back({ pos, vel, 0.000165f, glm::vec3(0.8f, 0.8f, 0.8f) });
+        glm::dvec3 pos = fieldCenter + glm::dvec3(scale * 0.39f, 0, 0);
+        glm::dvec3 vel = glm::normalize(glm::cross(glm::dvec3(0,1,0), glm::normalize(pos - fieldCenter))) * velScale * 1.6;
+        masses.push_back({ pos, vel, 0.000165f, glm::dvec3(0.8f, 0.8f, 0.8f), "Mercury"});
     }
 
     // Venus 
     {
-        glm::vec3 pos = fieldCenter + glm::vec3(scale * 0.72f, 0, 0);
-        glm::vec3 vel = glm::normalize(glm::cross(glm::vec3(0,1,0), glm::normalize(pos - fieldCenter))) * velScale * 1.2f;
-        masses.push_back({ pos, vel, 0.00245f, glm::vec3(1.0f, 0.8f, 0.5f) });
+        glm::dvec3 pos = fieldCenter + glm::dvec3(scale * 0.72, 0, 0);
+        glm::dvec3 vel = glm::normalize(glm::cross(glm::dvec3(0,1,0), glm::normalize(pos - fieldCenter))) * velScale * 1.2;
+        masses.push_back({ pos, vel, 0.00245, glm::dvec3(1.0, 0.8, 0.5), "Venus"});
     }
 
     // Earth 
     {
-        glm::vec3 pos = fieldCenter + glm::vec3(scale * 1.0f, 0, 0);
-        glm::vec3 vel = glm::normalize(glm::cross(glm::vec3(0,1,0), glm::normalize(pos - fieldCenter))) * velScale;
-        masses.push_back({ pos, vel, 0.003f, glm::vec3(0.0f, 0.5f, 1.0f) });
+        glm::dvec3 pos = fieldCenter + glm::dvec3(scale * 1.0f, 0, 0);
+        glm::dvec3 vel = glm::normalize(glm::cross(glm::dvec3(0,1,0), glm::normalize(pos - fieldCenter))) * velScale;
+        masses.push_back({ pos, vel, 0.003, glm::dvec3(0.0, 0.5, 1.0), "Earth"});
     }
 
     // Mars 
     {
-        glm::vec3 pos = fieldCenter + glm::vec3(scale * 1.52f, 0, 0);
-        glm::vec3 vel = glm::normalize(glm::cross(glm::vec3(0,1,0), glm::normalize(pos - fieldCenter))) * velScale * 0.8f;
-        masses.push_back({ pos, vel, 0.000323f, glm::vec3(1.0f, 0.3f, 0.3f) });
+        glm::dvec3 pos = fieldCenter + glm::dvec3(scale * 1.52, 0, 0);
+        glm::dvec3 vel = glm::normalize(glm::cross(glm::dvec3(0,1,0), glm::normalize(pos - fieldCenter))) * velScale * 0.8;
+        masses.push_back({ pos, vel, 0.000323, glm::dvec3(1.0, 0.3, 0.3), "Mars"});
     }
 
     // Jupiter 
     // {
-    //     glm::vec3 pos = fieldCenter + glm::vec3(scale * 5.2f, 0, 0);
-    //     glm::vec3 vel = glm::normalize(glm::cross(glm::vec3(0,1,0), glm::normalize(pos - fieldCenter))) * velScale * 0.44f;
-    //     masses.push_back({ pos, vel, 0.954f, glm::vec3(1.0f, 0.9f, 0.6f) });
+    //     glm::dvec3 pos = fieldCenter + glm::dvec3(scale * 5.2f, 0, 0);
+    //     glm::dvec3 vel = glm::normalize(glm::cross(glm::dvec3(0,1,0), glm::normalize(pos - fieldCenter))) * velScale * 0.44f;
+    //     masses.push_back({ pos, vel, 0.954f, glm::dvec3(1.0f, 0.9f, 0.6f) });
     // }
     {
-        glm::vec3 pos = fieldCenter + glm::vec3(scale * 5.2f, 0, 0.5);
-        glm::vec3 vel = glm::normalize(glm::cross(glm::vec3(0,1,0), glm::normalize(pos - fieldCenter))) * velScale * 0.44f;
-        masses.push_back({ pos, vel, 10.954f, glm::vec3(1.0f, 0.9f, 0.6f) });
+        glm::dvec3 pos = fieldCenter + glm::dvec3(scale * 5.2, 0, 0.5);
+        glm::dvec3 vel = glm::normalize(glm::cross(glm::dvec3(0,1,0), glm::normalize(pos - fieldCenter))) * velScale * 0.44;
+        masses.push_back({ pos, vel, 0.954, glm::dvec3(1.0, 0.9, 0.6), "Jupiter"});
     }
     // Titan
     {
-        glm::vec3 pos = fieldCenter + glm::vec3(scale * 5.5f, 0, 0);
-        glm::vec3 vel = glm::normalize(glm::cross(glm::vec3(0,1,0), glm::normalize(pos - fieldCenter))) * velScale * 0.9f;
-        masses.push_back({ pos, vel, 0.0000954f, glm::vec3(1.0f, 0.9f, 0.6f) });
+        glm::dvec3 pos = fieldCenter + glm::dvec3(scale * 5.5, 0, 0);
+        glm::dvec3 vel = glm::normalize(glm::cross(glm::dvec3(0,1,0), glm::normalize(pos - fieldCenter))) * velScale * 0.9;
+        masses.push_back({ pos, vel, 0.0000954, glm::dvec3(1.0, 0.9, 0.6), "Titan"});
     }
 
     // These require a larger field which in turn requires better parallelization
     // // Saturn 
     // {
-    //     glm::vec3 pos = fieldCenter + glm::vec3(scale * 9.58f, 0, 0);
-    //     glm::vec3 vel = glm::normalize(glm::cross(glm::vec3(0,1,0), glm::normalize(pos - fieldCenter))) * velScale * 0.32f;
-    //     masses.push_back({ pos, vel, 0.2857f, glm::vec3(1.0f, 0.85f, 0.5f) });
+    //     glm::dvec3 pos = fieldCenter + glm::dvec3(scale * 9.58f, 0, 0);
+    //     glm::dvec3 vel = glm::normalize(glm::cross(glm::dvec3(0,1,0), glm::normalize(pos - fieldCenter))) * velScale * 0.32f;
+    //     masses.push_back({ pos, vel, 0.2857f, glm::dvec3(1.0f, 0.85f, 0.5f) });
     // }
 
     // // Uranus 
     // {
-    //     glm::vec3 pos = fieldCenter + glm::vec3(scale * 19.2f, 0, 0);
-    //     glm::vec3 vel = glm::normalize(glm::cross(glm::vec3(0,1,0), glm::normalize(pos - fieldCenter))) * velScale * 0.23f;
-    //     masses.push_back({ pos, vel, 0.0436f, glm::vec3(0.6f, 1.0f, 1.0f) });
+    //     glm::dvec3 pos = fieldCenter + glm::dvec3(scale * 19.2f, 0, 0);
+    //     glm::dvec3 vel = glm::normalize(glm::cross(glm::dvec3(0,1,0), glm::normalize(pos - fieldCenter))) * velScale * 0.23f;
+    //     masses.push_back({ pos, vel, 0.0436f, glm::dvec3(0.6f, 1.0f, 1.0f) });
     // }
 
     // // Neptune 
     // {
-    //     glm::vec3 pos = fieldCenter + glm::vec3(scale * 30.05f, 0, 0);
-    //     glm::vec3 vel = glm::normalize(glm::cross(glm::vec3(0,1,0), glm::normalize(pos - fieldCenter))) * velScale * 0.19f;
-    //     masses.push_back({ pos, vel, 0.0515f, glm::vec3(0.3f, 0.3f, 1.0f) });
+    //     glm::dvec3 pos = fieldCenter + glm::dvec3(scale * 30.05f, 0, 0);
+    //     glm::dvec3 vel = glm::normalize(glm::cross(glm::dvec3(0,1,0), glm::normalize(pos - fieldCenter))) * velScale * 0.19f;
+    //     masses.push_back({ pos, vel, 0.0515f, glm::dvec3(0.3f, 0.3f, 1.0f) });
     // }
 
     // // Pluto 
     // {
-    //     glm::vec3 pos = fieldCenter + glm::vec3(scale * 39.48f, 0, 0);
-    //     glm::vec3 vel = glm::normalize(glm::cross(glm::vec3(0,1,0), glm::normalize(pos - fieldCenter))) * velScale * 0.16f;
-    //     masses.push_back({ pos, vel, 0.0000655f, glm::vec3(0.7f, 0.6f, 0.6f) });
+    //     glm::dvec3 pos = fieldCenter + glm::dvec3(scale * 39.48f, 0, 0);
+    //     glm::dvec3 vel = glm::normalize(glm::cross(glm::dvec3(0,1,0), glm::normalize(pos - fieldCenter))) * velScale * 0.16f;
+    //     masses.push_back({ pos, vel, 0.0000655f, glm::dvec3(0.7f, 0.6f, 0.6f) });
     // }
 
     massTrails.clear();
@@ -236,18 +237,20 @@ void updateField() {
     // Reset accumulated forces on gravitons
     #pragma omp parallel for
     for (auto& g : field) {
-        g.accumulatedForce = glm::vec3(0.0f);
+        g.accumulatedForce = glm::dvec3(0.0f);
     }
 
     // For each mass, propagate influence to nearby gravitons
     for (const auto& m : masses) {
         #pragma omp parallel for
         for (auto& g : field) {
-            glm::vec3 dir = m.position - g.position;
-            float dist = glm::length(dir);
+            glm::dvec3 dir = m.position - g.position;
+            double dist = glm::length(dir);
             if (dist < 0.0001f) continue;
+            
+            double r2 = dist * dist;
 
-            glm::vec3 influence = glm::normalize(dir) * (m.mass) / (dist * dist);
+            glm::dvec3 influence = glm::normalize(dir) * m.mass / r2;
             g.accumulatedForce += influence;
         }
     }
@@ -260,40 +263,49 @@ void updateField() {
 }
 
 void updateMasses() {
-    const float maxSampleRadius = 1.0f * GRAVITON_SPACING;
+    const double maxSampleRadius = 1.0f * GRAVITON_SPACING;
 
     #pragma omp parallel for
     for (auto& m : masses) {
-        glm::vec3 totalForce(0.0f);
+        glm::dvec3 totalForce(0.0f);
 
         #pragma omp parallel for reduction(+:totalForce)
         for (int i = 0; i < field.size(); ++i) {
             const auto& g = field[i];
-            glm::vec3 offset = g.position - m.position;
-            float dist = glm::length(offset);
-            if (dist > maxSampleRadius || dist < 0.0001f) continue;
+            glm::dvec3 offset = g.position - m.position;
+            double dist = glm::length(offset);
+            //if (dist > maxSampleRadius) continue;
 
-            // Apply inverse-square falloff (more physical than 1/r)
-            glm::vec3 force = g.momentum / (dist * dist + 1e-6f);
+            //double r2 = dist * dist;
+            //double r2 = dist * dist + (0.1f + GRAVITON_SPACING);
+
+            double weight = exp(-dist * dist / (10.0f * GRAVITON_SPACING * GRAVITON_SPACING));
+
+            glm::dvec3 force = g.momentum * weight;
             totalForce += force;
         }
 
-        glm::vec3 acceleration = totalForce / m.mass;   // m/s²
-        m.velocity += acceleration * 1e-11f;              // m/s, since timestep = 1
-        m.position += m.velocity;                       // m
+        glm::dvec3 acceleration = totalForce / m.mass;
+        m.velocity += acceleration * 1e-8;
+        m.position += m.velocity;
     }
 
-    // Mass trail rendering remains the same
     #pragma omp parallel for
     for (size_t i = 0; i < masses.size(); ++i) {
         TrailPoint tp;
         tp.position = masses[i].position * GRAVITON_SPACING;
         tp.color = masses[i].color;
         massTrails[i].push_back(tp);
+       
         if (massTrails[i].size() > MAX_TRAIL_LENGTH) {
             massTrails[i].erase(massTrails[i].begin());
         }
     }
+    // for(auto m : masses) {
+    //     std::cout << "Mass is: " << m.name << '\n';
+    //     glm::dvec3 velocity = m.velocity;
+    //     std::cout << "Velocity is: {x: " << velocity.x << ", y: " << velocity.y << ", z: " << velocity.z << "}" << '\n' << '\n';
+    // }
 }
 
 GLuint fieldVAO = 0, fieldVBO = 0;
@@ -334,8 +346,8 @@ void setupShader(std::string vsPath, std::string fsPath, GLuint *program) {
 }
 
 void setupShaders() {
-    setupShader("src/shaders/graviton.vs", "src/shaders/graviton.fs", &gravitonShaderProgram);
-    setupShader("src/shaders/mass.vs", "src/shaders/mass.fs", &massShaderProgram);
+    setupShader("shaders/graviton.vs", "shaders/graviton.fs", &gravitonShaderProgram);
+    setupShader("shaders/mass.vs", "shaders/mass.fs", &massShaderProgram);
 }
 
 void setupBuffers() {
@@ -343,53 +355,53 @@ void setupBuffers() {
     glGenBuffers(1, &fieldVBO);
     glBindVertexArray(fieldVAO);
     glBindBuffer(GL_ARRAY_BUFFER, fieldVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 6 * 2 * field.size(), nullptr, GL_DYNAMIC_DRAW); // conservative size
+    glBufferData(GL_ARRAY_BUFFER, sizeof(double) * 6 * 2 * field.size(), nullptr, GL_DYNAMIC_DRAW); // conservative size
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 7 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_DOUBLE, GL_FALSE, 7 * sizeof(double), (void*)0);
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 7 * sizeof(float), (void*)(3 * sizeof(float)));
+    glVertexAttribPointer(1, 4, GL_DOUBLE, GL_FALSE, 7 * sizeof(double), (void*)(3 * sizeof(double)));
     glBindVertexArray(0);
 
     glGenVertexArrays(1, &massVAO);
     glGenBuffers(1, &massVBO);
     glBindVertexArray(massVAO);
     glBindBuffer(GL_ARRAY_BUFFER, massVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 6 * masses.size(), nullptr, GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(double) * 6 * masses.size(), nullptr, GL_DYNAMIC_DRAW);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_DOUBLE, GL_FALSE, 6 * sizeof(double), (void*)0);
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    glVertexAttribPointer(1, 3, GL_DOUBLE, GL_FALSE, 6 * sizeof(double), (void*)(3 * sizeof(double)));
     glBindVertexArray(0);
 }
 
 void renderField(const glm::mat4& vp) {
     // Create thread-local line data containers
-    std::vector<std::vector<float>> threadLocalData;
+    std::vector<std::vector<double>> threadLocalData;
     #pragma omp parallel
     {
-        std::vector<float> localLineData;
+        std::vector<double> localLineData;
         #pragma omp for nowait
         for (const auto& g : field) {
-            glm::vec3 p1 = g.position * GRAVITON_SPACING;
+            glm::dvec3 p1 = g.position * GRAVITON_SPACING;
             if (glm::length(g.momentum) > 0.01f) {
-                float intensity = glm::length(g.momentum) * 0.1f;
+                double intensity = glm::length(g.momentum) * 0.00005f;
                 
                 // Map base color rgb components
-                glm::vec3 baseColor = glm::mix(glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(1.0f, 0.0f, 0.0f), intensity);
+                glm::dvec3 baseColor = glm::mix(glm::dvec3(0.0f, 0.0f, 1.0f), glm::dvec3(1.0f, 0.0f, 0.0f), intensity);
                 
-                glm::vec3 toMass = glm::normalize(masses[0].position * GRAVITON_SPACING - p1);
-                glm::vec3 momentumDir = glm::normalize(g.momentum);
+                glm::dvec3 toMass = glm::normalize(masses[0].position * GRAVITON_SPACING - p1);
+                glm::dvec3 momentumDir = glm::normalize(g.momentum);
 
                 // 1.0f if perfectly aligned, 0.0f if perpendicular, -1.0f if opposite
-                float alignment = glm::dot(momentumDir, toMass);
+                double alignment = glm::dot(momentumDir, toMass);
 
                 // Map alignment (which is between -1 and 1) into a 0 to 1 deviation measure
-                float deviation = 1.0f - alignment;
+                double deviation = 1.0f - alignment;
 
                 // Now map deviation [0, 1] to alpha [0.2, 1.0]
-                float alpha = 0.1f + deviation * 0.9f;
+                double alpha = 0.1f + deviation * 0.9f;
                 
-                glm::vec3 p2 = p1 + glm::normalize(g.momentum) * 0.5f;
+                glm::dvec3 p2 = p1 + glm::normalize(g.momentum) * 0.5;
                 
                 localLineData.push_back(p1.x); localLineData.push_back(p1.y); localLineData.push_back(p1.z);
                 localLineData.push_back(baseColor.r); localLineData.push_back(baseColor.g); 
@@ -414,7 +426,7 @@ void renderField(const glm::mat4& vp) {
         totalSize += threadData.size();
     }
     
-    std::vector<float> lineData;
+    std::vector<double> lineData;
     lineData.reserve(totalSize);
     for (const auto& threadData : threadLocalData) {
         lineData.insert(lineData.end(), threadData.begin(), threadData.end());
@@ -423,7 +435,7 @@ void renderField(const glm::mat4& vp) {
     // Send merged data to GPU
     glBindVertexArray(fieldVAO);
     glBindBuffer(GL_ARRAY_BUFFER, fieldVBO);
-    glBufferData(GL_ARRAY_BUFFER, lineData.size() * sizeof(float), lineData.data(), GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, lineData.size() * sizeof(double), lineData.data(), GL_DYNAMIC_DRAW);
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -440,18 +452,18 @@ void renderField(const glm::mat4& vp) {
 }
 
 void renderMasses(const glm::mat4& vp) {
-    std::vector<float> massData;
+    std::vector<double> massData;
     for (const auto& m : masses) {
-        glm::vec3 pos = m.position * GRAVITON_SPACING;
-        glm::vec3 color = m.color;
-        float radius = std::cbrt(m.mass);
+        glm::dvec3 pos = m.position * GRAVITON_SPACING;
+        glm::dvec3 color = m.color;
+        double radius = std::cbrt(m.mass);
         massData.push_back(pos.x); massData.push_back(pos.y); massData.push_back(pos.z);
         massData.push_back(color.r); massData.push_back(color.g); massData.push_back(color.b);
         glPointSize(radius);
     }
     glBindVertexArray(massVAO);
     glBindBuffer(GL_ARRAY_BUFFER, massVBO);
-    glBufferData(GL_ARRAY_BUFFER, massData.size() * sizeof(float), massData.data(), GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, massData.size() * sizeof(double), massData.data(), GL_DYNAMIC_DRAW);
     glUseProgram(massShaderProgram);
     GLint vpLoc = glGetUniformLocation(massShaderProgram, "uVP");
     glUniformMatrix4fv(vpLoc, 1, GL_FALSE, glm::value_ptr(vp));
@@ -460,7 +472,7 @@ void renderMasses(const glm::mat4& vp) {
 }
 
 void renderTrails(const glm::mat4& vp) {
-    std::vector<float> trailData;
+    std::vector<double> trailData;
     for (const auto& trail : massTrails) {
         for (const auto& tp : trail) {
             trailData.push_back(tp.position.x);
@@ -476,11 +488,11 @@ void renderTrails(const glm::mat4& vp) {
     glGenBuffers(1, &trailVBO);
     glBindVertexArray(trailVAO);
     glBindBuffer(GL_ARRAY_BUFFER, trailVBO);
-    glBufferData(GL_ARRAY_BUFFER, trailData.size() * sizeof(float), trailData.data(), GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, trailData.size() * sizeof(double), trailData.data(), GL_DYNAMIC_DRAW);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_DOUBLE, GL_FALSE, 6 * sizeof(double), (void*)0);
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    glVertexAttribPointer(1, 3, GL_DOUBLE, GL_FALSE, 6 * sizeof(double), (void*)(3 * sizeof(double)));
 
     glUseProgram(massShaderProgram);
     GLint vpLoc = glGetUniformLocation(massShaderProgram, "uVP");
@@ -495,7 +507,7 @@ void renderTrails(const glm::mat4& vp) {
     glDeleteBuffers(1, &trailVBO);
 }
 
-int main() {
+int main(int argc, char *argv[]) {
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
@@ -534,7 +546,7 @@ int main() {
     
 
     while (!glfwWindowShouldClose(window)) {
-        float currentFrame = float(glfwGetTime());
+        double currentFrame = double(glfwGetTime());
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
@@ -548,7 +560,7 @@ int main() {
             updateMasses();
         }
 
-        glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)SCR_WIDTH / SCR_HEIGHT, 0.1f, 100.0f);
+        glm::mat4 projection = glm::perspective(glm::radians(45.0), (double)SCR_WIDTH / SCR_HEIGHT, 0.1, 100.0);
         glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
         glm::mat4 vp = projection * view;
 
